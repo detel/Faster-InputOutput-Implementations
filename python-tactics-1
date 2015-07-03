@@ -1,0 +1,121 @@
+############################################ STRING  CONCATENATION ############################################
+
+Avoid this:
+
+  s = ""
+  for substring in list:
+      s += substring
+    
+Use:
+
+  slist = [some_function(elt) for elt in somelist]
+  s = "".join(slist)
+
+Avoid:
+
+  out = "<html>" + head + prologue + query + tail + "</html>"
+
+Instead, use
+
+  out = "<html>%s%s%s%s</html>" % (head, prologue, query, tail)
+
+Even better, for readability (this has nothing to do with efficiency other than yours as a programmer), use dictionary substitution:
+
+  out = "<html>%(head)s%(prologue)s%(query)s%(tail)s</html>" % locals()
+  
+  
+  
+#################################################### LOOPS ####################################################
+  
+Instead of looping over a list of words and converting them to upper case:
+
+  newlist = []
+  for word in oldlist:
+      newlist.append(word.upper())
+
+you can use map to push the loop from the interpreter into compiled C code:
+
+  newlist = map(str.upper, oldlist)
+
+List comprehensions were added to Python in version 2.0 as well. They provide a syntactically more compact and more efficient way of writing the above for loop:
+
+  newlist = [s.upper() for s in oldlist]
+
+Generator expressions were added to Python in version 2.4. They function more-or-less like list comprehensions or map but avoid the overhead of generating the entire list at once. Instead, they return a generator object which can be iterated over bit-by-bit:
+
+  iterator = (s.upper() for s in oldlist)
+
+Which method is appropriate will depend on what version of Python you're using and the characteristics of the data you are manipulating.
+
+
+
+################################################ AVOIDING DOTS ################################################
+
+Suppose you can't use map or a list comprehension? You may be stuck with the for loop. The for loop example has another inefficiency. Both newlist.append and word.upper are function references that are reevaluated each time through the loop. The original loop can be replaced with:
+
+  upper = str.upper
+  newlist = []
+  append = newlist.append
+  for word in oldlist:
+      append(upper(word))
+
+This technique should be used with caution. It gets more difficult to maintain if the loop is large. Unless you are intimately familiar with that piece of code you will find yourself scanning up to check the definitions of append and upper.
+
+
+
+############################################### LOCAL VARIABLES ###############################################
+
+Python accesses local variables much more efficiently than global variables.
+
+  def func():
+      upper = str.upper
+      newlist = []
+      append = newlist.append
+      for word in oldlist:
+          append(upper(word))
+      return newlist
+      
+      
+      
+####################################### INITIALIZING DICTIONARY ELEMENTS ######################################
+
+Avoid:
+
+  wdict = {}
+  for word in words:
+      if word not in wdict:
+          wdict[word] = 0
+      wdict[word] += 1
+
+Use:
+
+  wdict = {}
+  for word in words:
+      try:
+          wdict[word] += 1
+      except KeyError:
+          wdict[word] = 1
+
+It's important to catch the expected KeyError exception, and not have a default except clause to avoid trying to recover from an exception you really can't handle by the statement(s) in the try clause.
+
+A third alternative became available with the release of Python 2.x. Dictionaries now have a get() method which will return a default value if the desired key isn't found in the dictionary. This simplifies the loop:
+
+  wdict = {}
+  get = wdict.get
+  for word in words:
+      wdict[word] = get(word, 0) + 1
+
+Also, if the value stored in the dictionary is an object or a (mutable) list, you could also use the dict.setdefault method, e.g.
+
+  wdict.setdefault(key, []).append(new_element)
+
+You might think that this avoids having to look up the key twice. It actually doesn't (even in python 3.0), but at least the double lookup is performed in C.
+
+Another option is to use the defaultdict class:
+
+  from collections import defaultdict
+
+  wdict = defaultdict(int)
+
+  for word in words:
+      wdict[word] += 1
