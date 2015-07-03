@@ -1,0 +1,80 @@
+############################################## RE-MAP FUNCTIONS AT RUNTIME ##############################################
+
+Say you have a function
+
+ class Test:
+   def check(self,a,b,c):
+     if a == 0:
+       self.str = b*100
+     else:
+       self.str = c*100
+
+ a = Test()
+ def example():
+   for i in xrange(0,100000):
+     a.check(i,"b","c")
+
+ import profile
+ profile.run("example()")
+
+And suppose this function gets called from somewhere else many times.
+
+Well, your check will have an if statement slowing you down all the time except the first time, so you can do this:
+
+ class Test2:
+   def check(self,a,b,c):
+     self.str = b*100
+     self.check = self.check_post
+   def check_post(self,a,b,c):
+     self.str = c*100
+
+ a = Test2()
+ def example2():
+   for i in xrange(0,100000):
+     a.check(i,"b","c")
+
+ import profile
+ profile.run("example2()")
+ 
+ 
+ 
+################################################### PYTHON IS NOT C ###################################################
+
+  % timeit.py -s 'x = 47' 'x * 2'
+  loops, best of 3: 0.574 usec per loop
+  % timeit.py -s 'x = 47' 'x << 1'
+  loops, best of 3: 0.524 usec per loop
+  % timeit.py -s 'x = 47' 'x + x'
+  loops, best of 3: 0.382 usec per loop
+  
+There is a significant advantage in Python to adding a number to itself instead of multiplying it by two or shifting it left by one bit.
+
+
+
+################################################### DATA AGGREGATION ##################################################
+
+Avoid :
+
+  x = 0
+  def doit1(i):
+      global x
+      x = x + i
+
+  list = range(100000)
+  t = time.time()
+  for i in list:
+      doit1(i)
+
+Use :
+
+  x = 0
+  def doit2(list):
+      global x
+      for i in list:
+          x = x + i
+
+  list = range(100000)
+  t = time.time()
+  doit2(list)
+  
+Even written in Python, the second example runs about four times faster than the first. Had doit been written in C the difference would likely have been even greater (exchanging a Python for loop for a C for loop as well as removing most of the function calls).
